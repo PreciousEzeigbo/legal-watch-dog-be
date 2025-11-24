@@ -34,6 +34,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
+    root_path="/api",
     title=f"{settings.APP_NAME} API",
     description=f"{settings.APP_NAME} API for managing projects and endpoints",
     version=settings.APP_VERSION,
@@ -74,7 +75,7 @@ app.include_router(api_router)
 def read_root():
     return success_response(
         status_code=200,
-        message=f"{settings.APP_NAME} API is running...",
+        message=f"{settings.APP_NAME} CICD API is running...",
         data={
             "version": settings.APP_VERSION,
             "environment": "Production" if not settings.DEBUG else "Development",
