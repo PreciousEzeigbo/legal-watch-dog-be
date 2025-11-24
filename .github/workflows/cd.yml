@@ -83,7 +83,7 @@ jobs:
           TEST_EMAIL_PROVIDERS="${{ vars.TEST_EMAIL_PROVIDERS || 'gmail.com' }}"
           ENCRYPTION_KEY="${{ secrets.ENCRYPTION_KEY }}"
           EOF
-
+        
       - name: Setup SSH key
         env:
           SSH_KEY: ${{ steps.vars.outputs.server_pass }}
@@ -122,64 +122,51 @@ jobs:
             REMOTE_DIR="${REMOTE_DIR}"
             REPO_URL="${REPO_URL}"
             BRANCH="${BRANCH}"
-            
-            # Clone if the directory doesn't exist
+
             if [ ! -d "$REMOTE_DIR" ]; then
               mkdir -p $(dirname "$REMOTE_DIR")
               git clone "$REPO_URL" "$REMOTE_DIR"
             fi
 
             cd "$REMOTE_DIR"
-            
+
             git pull origin "$BRANCH"
-            
             mv /tmp/backend_env .env
-            
-            # Install uv if not present
+
             if ! command -v uv &> /dev/null; then
               echo "Installing uv..."
               curl -LsSf https://astral.sh/uv/install.sh | sh
               export PATH="$HOME/.local/bin:$PATH"
             fi
-            
-            uv sync
 
+            uv sync
             uv run alembic upgrade head
-            
-            # Load environment variables
-            set -a 
-            source .env 
+
+            set -a
+            source .env
             set +a
-            
-            # PM2 Management
+
             PM2_APP_NAME="legal-watchdog-be-${ENVIRONMENT}"
-            
-            # Check if PM2 is installed
+
             if ! command -v pm2 &> /dev/null; then
               echo "Installing PM2..."
               npm install -g pm2
             fi
-            
-            # Check if ecosystem.config.js exists
+
             if [ ! -f "ecosystem.config.js" ]; then
               echo "Error: ecosystem.config.js not found!"
               exit 1
             fi
-            
-            # Stop all existing PM2 processes for this app (if any)
+
             echo "Checking for existing PM2 processes..."
             pm2 describe "$PM2_APP_NAME" > /dev/null 2>&1 && pm2 delete "$PM2_APP_NAME" || echo "No existing process found"
-            
-            # Start/restart using ecosystem config
+
             echo "Starting application with ecosystem.config.js..."
             pm2 start ecosystem.config.js --update-env
-            
-            # Save PM2 process list to persist across reboots
+
             pm2 save
-            
-            # Setup PM2 startup script (safe to run multiple times)
             pm2 startup systemd -u $(whoami) --hp $(echo $HOME) || true
-            
+
             echo "$ENVIRONMENT deployment complete on port $APP_PORT!"
             pm2 status
           EOF
@@ -198,10 +185,8 @@ jobs:
         run: |
           echo "Preparing Slack message..."
 
-          # Get branch name
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
-          
-          # Determine environment
+
           if [ "$BRANCH_NAME" == "main" ]; then
             ENV_NAME="Production"
             ENV_EMOJI="🚀"
@@ -209,8 +194,7 @@ jobs:
             ENV_NAME="Staging"
             ENV_EMOJI="🧪"
           fi
-          
-          # Determine outcome and set appropriate emoji
+
           if [ "$DEPLOY_RESULT" == "success" ]; then
             MAIN_STATUS="✅ Deployment Successful"
             STATUS_COLOR="good"
@@ -221,14 +205,12 @@ jobs:
             DETAIL_MSG="\n❌ *${ENV_NAME} Environment:* Failed to deploy to ${ENV_NAME,,} server"
           fi
 
-          # Add branch info
           DETAIL_MSG="${DETAIL_MSG}\n\n${ENV_EMOJI} *Environment:* \`${ENV_NAME}\`"
           DETAIL_MSG="${DETAIL_MSG}\n📋 *Branch:* \`${BRANCH_NAME}\`"
           DETAIL_MSG="${DETAIL_MSG}\n👤 *Triggered by:* ${GITHUB_ACTOR}"
 
           LOG_LINK="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
-          # Format Slack JSON with rich formatting
           PAYLOAD="{
             \"attachments\": [
               {
@@ -236,28 +218,16 @@ jobs:
                 \"blocks\": [
                   {
                     \"type\": \"header\",
-                    \"text\": {
-                      \"type\": \"plain_text\",
-                      \"text\": \"⚙️ Backend Deployment Update\",
-                      \"emoji\": true
-                    }
+                    \"text\": { \"type\": \"plain_text\", \"text\": \"⚙️ Backend Deployment Update\", \"emoji\": true }
                   },
                   {
                     \"type\": \"section\",
-                    \"text\": {
-                      \"type\": \"mrkdwn\",
-                      \"text\": \"*${MAIN_STATUS}*${DETAIL_MSG}\"
-                    }
+                    \"text\": { \"type\": \"mrkdwn\", \"text\": \"*${MAIN_STATUS}*${DETAIL_MSG}\" }
                   },
-                  {
-                    \"type\": \"divider\"
-                  },
+                  { \"type\": \"divider\" },
                   {
                     \"type\": \"section\",
-                    \"text\": {
-                      \"type\": \"mrkdwn\",
-                      \"text\": \"Need help? Check the <${LOG_LINK}|detailed logs> or contact the development team.\"
-                    }
+                    \"text\": { \"type\": \"mrkdwn\", \"text\": \"Need help? Check the <${LOG_LINK}|detailed logs> or contact the development team.\" }
                   }
                 ]
               }
