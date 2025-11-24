@@ -28,7 +28,6 @@ ENV/
 .env
 
 # VSCode
-.vscode/
 .history/
 *.code-workspace
 
@@ -45,6 +44,7 @@ dmypy.json
 
 # Pytest
 .pytest_cache/
+temp_auto_push.bat
 
 # Coverage reports
 .coverage
@@ -92,3 +92,5 @@ __pypackages__/
 ecosystem.config.js
 start_app.sh
 
+.gitignore
+branch_structure.json
